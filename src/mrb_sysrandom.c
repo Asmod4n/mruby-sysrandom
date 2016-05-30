@@ -1,6 +1,8 @@
 #include <mruby.h>
 #include <mruby/string.h>
 #include <mruby/data.h>
+#include <stdlib.h>
+#include <mruby/numeric.h>
 
 #if (__GNUC__ >= 3) || (__INTEL_COMPILER >= 800) || defined(__clang__)
 # define likely(x) __builtin_expect(!!(x), 1)
@@ -36,6 +38,34 @@ __randombytes_sysrandom_uniform(const uint32_t upper_bound)
     } while (r < min);
 
     return r % upper_bound;
+}
+
+/* Derived from original code by CodesInChaos */
+char *
+__sysrandom_bin2hex(char * const hex, const size_t hex_maxlen,
+               const unsigned char * const bin, const size_t bin_len)
+{
+    size_t       i = (size_t) 0U;
+    unsigned int x;
+    int          b;
+    int          c;
+
+    if (bin_len >= SIZE_MAX / 2 || hex_maxlen <= bin_len * 2U) {
+        abort(); /* LCOV_EXCL_LINE */
+    }
+    while (i < bin_len) {
+        c = bin[i] & 0xf;
+        b = bin[i] >> 4;
+        x = (unsigned char) (87U + c + (((c - 10U) >> 8) & ~38U)) << 8 |
+            (unsigned char) (87U + b + (((b - 10U) >> 8) & ~38U));
+        hex[i * 2U] = (char) x;
+        x >>= 8;
+        hex[i * 2U + 1U] = (char) x;
+        i++;
+    }
+    hex[i * 2U] = 0U;
+
+    return hex;
 }
 
 static mrb_value
@@ -138,14 +168,37 @@ mrb_randombytes_sysrandom_buf(mrb_state *mrb, mrb_value self)
   return buf_obj;
 }
 
+static mrb_value
+mrb_sysrandom_bin2hex(mrb_state *mrb, mrb_value self)
+{
+  char *bin;
+  mrb_int bin_len;
+
+  mrb_get_args(mrb, "s", &bin, &bin_len);
+
+  mrb_int hex_len;
+  if(unlikely(mrb_int_mul_overflow(bin_len, 2, &hex_len))) {
+    mrb_raise(mrb, E_ARGUMENT_ERROR, "bin_len is too large");
+  }
+
+  mrb_value hex = mrb_str_new(mrb, NULL, hex_len);
+
+  char *h = __sysrandom_bin2hex(RSTRING_PTR(hex), RSTRING_LEN(hex) + 1,
+    (const unsigned char *) bin, bin_len);
+  assert(h);
+
+  return hex;
+}
+
 void
 mrb_mruby_sysrandom_gem_init(mrb_state* mrb)
 {
-  struct RClass *sysrandom_mod = mrb_define_class(mrb, "Sysrandom", mrb->object_class);
+  struct RClass *sysrandom_mod = mrb_define_module(mrb, "Sysrandom");
 
   mrb_define_module_function(mrb, sysrandom_mod, "random",  mrb_randombytes_sysrandom,   MRB_ARGS_OPT(1));
   mrb_define_module_function(mrb, sysrandom_mod, "uniform", mrb_randombytes_sysrandom_uniform,  MRB_ARGS_REQ(1));
   mrb_define_module_function(mrb, sysrandom_mod, "buf",     mrb_randombytes_sysrandom_buf,      MRB_ARGS_OPT(2));
+  mrb_define_module_function(mrb, sysrandom_mod, "__bin2hex", mrb_sysrandom_bin2hex,  MRB_ARGS_REQ(1));
 }
 
 void mrb_mruby_sysrandom_gem_final(mrb_state* mrb) {}
