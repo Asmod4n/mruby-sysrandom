@@ -20,7 +20,6 @@ The following random number generators are utilized:
 | Linux    | [getrandom(2)] if available, otherwise [/dev/urandom]  |
 | Windows  | [RtlGenRandom] CryptGenRandom without CryptoAPI deps   |
 | OpenBSD  | [arc4random(3)] with ChaCha20 CSPRNG (not RC4)         |
-| JRuby    | [NativePRNGNonBlocking] on Java 8, otherwise SHA1PRNG  |
 | Others   | [/dev/urandom]                                         |
 
 [emboss]:        https://emboss.github.io/blog/2013/08/21/openssl-prng-is-not-really-fork-safe/
@@ -30,12 +29,11 @@ The following random number generators are utilized:
 [/dev/urandom]:  http://sockpuppet.org/blog/2014/02/25/safely-generate-random-numbers/
 [RtlGenRandom]:  https://msdn.microsoft.com/en-us/library/windows/desktop/aa387694(v=vs.85).aspx
 [arc4random(3)]: http://man.openbsd.org/arc4random.3
-[NativePRNGNonBlocking]: https://tersesystems.com/2015/12/17/the-right-way-to-use-securerandom/
 
 ## Usage
 
 ```ruby
-Sysrandom.random_bytes
+Sysrandom.random_bytes # returns a 16 byte binary string
 
 Sysrandom.random_bytes(64)
 
@@ -45,11 +43,15 @@ Sysrandom.random # returns a number
 
 Sysrandom.uniform(upper_bound) # returns a number up to upper_bound
 
-Sysrandom.base64
+Sysrandom.base64 # returns a 16 byte binary string as base64
 
 Sysrandom.base64(64)
 
-Sysrandom.hex
+Sysrandom.base64(" " * 10)
+
+Sysrandom.hex # returns a 16 byte binary string as hex
 
 Sysrandom.hex(64)
+
+Sysrandom.hex(" " * 10)
 ```

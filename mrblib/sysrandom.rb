@@ -6,11 +6,11 @@ module Sysrandom
     alias :random_bytes :buf
 
     def base64(n = DEFAULT_LENGTH)
-      B64.encode(random_bytes(n)).chomp!
+      B64.encode(buf(n)).chomp!
     end
 
     def hex(n = DEFAULT_LENGTH)
-      __bin2hex(random_bytes(n))
+      __bin2hex(buf(n))
     end
   end
 end
