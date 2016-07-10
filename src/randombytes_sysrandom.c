@@ -3,6 +3,7 @@
  * Copyright (c) 2013-2016 Frank Denis <j at pureftpd dot org>
  * https://github.com/jedisct1/libsodium
  */
+#include <mruby.h>
 
 #include <stdlib.h>
 #include <sys/types.h>
@@ -45,19 +46,19 @@ BOOLEAN NTAPI RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
 
 #ifdef HAVE_SAFE_ARC4RANDOM
 
-uint32_t
-__randombytes_sysrandom(void)
+MRB_API uint32_t
+mrb_sysrandom(void)
 {
     return arc4random();
 }
 
 static void
-__randombytes_sysrandom_stir(void)
+mrb_sysrandom_stir(void)
 {
 }
 
-void
-__randombytes_sysrandom_buf(void * const buf, const size_t size)
+MRB_API void
+mrb_sysrandom_buf(void * const buf, const size_t size)
 {
     return arc4random_buf(buf, size);
 }
@@ -78,7 +79,7 @@ static SysRandom stream = {
 
 #ifndef _WIN32
 static ssize_t
-safe_read(const int fd, void * const buf_, size_t size)
+mrb_sysrandom_safe_read(const int fd, void * const buf_, size_t size)
 {
     unsigned char *buf = (unsigned char *) buf_;
     ssize_t        readnb;
@@ -105,7 +106,7 @@ safe_read(const int fd, void * const buf_, size_t size)
 #ifndef _WIN32
 # if defined(__linux__) && !defined(USE_BLOCKING_RANDOM)
 static int
-randombytes_block_on_dev_random(void)
+mrb_sysrandom_block_on_dev_random(void)
 {
     struct pollfd pfd;
     int           fd;
@@ -131,7 +132,7 @@ randombytes_block_on_dev_random(void)
 # endif
 
 static int
-__randombytes_sysrandom_random_dev_open(void)
+mrb_sysrandom_random_dev_open(void)
 {
 /* LCOV_EXCL_START */
     struct stat        st;
@@ -145,7 +146,7 @@ __randombytes_sysrandom_random_dev_open(void)
     int                fd;
 
 # if defined(__linux__) && !defined(USE_BLOCKING_RANDOM)
-    if (randombytes_block_on_dev_random() != 0) {
+    if (mrb_sysrandom_block_on_dev_random() != 0) {
         return -1;
     }
 # endif
@@ -180,7 +181,7 @@ __randombytes_sysrandom_random_dev_open(void)
 
 # if defined(SYS_getrandom) && defined(__NR_getrandom)
 static int
-_randombytes_linux_getrandom(void * const buf, const size_t size)
+_mrb_sysrandom_linux_getrandom(void * const buf, const size_t size)
 {
     int readnb;
 
@@ -193,7 +194,7 @@ _randombytes_linux_getrandom(void * const buf, const size_t size)
 }
 
 static int
-randombytes_linux_getrandom(void * const buf_, size_t size)
+mrb_sysrandom_linux_getrandom(void * const buf_, size_t size)
 {
     unsigned char *buf = (unsigned char *) buf_;
     size_t         chunk_size = 256U;
@@ -203,7 +204,7 @@ randombytes_linux_getrandom(void * const buf_, size_t size)
             chunk_size = size;
             assert(chunk_size > (size_t) 0U);
         }
-        if (_randombytes_linux_getrandom(buf, chunk_size) != 0) {
+        if (_mrb_sysrandom_linux_getrandom(buf, chunk_size) != 0) {
             return -1;
         }
         size -= chunk_size;
@@ -215,7 +216,7 @@ randombytes_linux_getrandom(void * const buf_, size_t size)
 # endif
 
 static void
-__randombytes_sysrandom_init(void)
+mrb_sysrandom_init(void)
 {
     const int     errno_save = errno;
 
@@ -223,7 +224,7 @@ __randombytes_sysrandom_init(void)
     {
         unsigned char fodder[16];
 
-        if (randombytes_linux_getrandom(fodder, sizeof fodder) == 0) {
+        if (mrb_sysrandom_linux_getrandom(fodder, sizeof fodder) == 0) {
             stream.getrandom_available = 1;
             errno = errno_save;
             return;
@@ -233,7 +234,7 @@ __randombytes_sysrandom_init(void)
 # endif
 
     if ((stream.random_data_source_fd =
-         __randombytes_sysrandom_random_dev_open()) == -1) {
+         mrb_sysrandom_random_dev_open()) == -1) {
         abort(); /* LCOV_EXCL_LINE */
     }
     errno = errno_save;
@@ -242,32 +243,32 @@ __randombytes_sysrandom_init(void)
 #else /* _WIN32 */
 
 static void
-__randombytes_sysrandom_init(void)
+mrb_sysrandom_init(void)
 {
 }
 #endif
 
 static void
-__randombytes_sysrandom_stir(void)
+mrb_sysrandom_stir(void)
 {
     if (stream.initialized == 0) {
-        __randombytes_sysrandom_init();
+        mrb_sysrandom_init();
         stream.initialized = 1;
     }
 }
 
 static void
-__randombytes_sysrandom_stir_if_needed(void)
+mrb_sysrandom_stir_if_needed(void)
 {
     if (stream.initialized == 0) {
-        __randombytes_sysrandom_stir();
+        mrb_sysrandom_stir();
     }
 }
 
-void
-__randombytes_sysrandom_buf(void * const buf, const size_t size)
+MRB_API void
+mrb_sysrandom_buf(void * const buf, const size_t size)
 {
-    __randombytes_sysrandom_stir_if_needed();
+    mrb_sysrandom_stir_if_needed();
 #ifdef ULONG_LONG_MAX
     /* coverity[result_independent_of_operands] */
     assert(size <= ULONG_LONG_MAX);
@@ -275,14 +276,14 @@ __randombytes_sysrandom_buf(void * const buf, const size_t size)
 #ifndef _WIN32
 # if defined(SYS_getrandom) && defined(__NR_getrandom)
     if (stream.getrandom_available != 0) {
-        if (randombytes_linux_getrandom(buf, size) != 0) {
+        if (mrb_sysrandom_linux_getrandom(buf, size) != 0) {
             abort();
         }
         return;
     }
 # endif
     if (stream.random_data_source_fd == -1 ||
-        safe_read(stream.random_data_source_fd, buf, size) != (ssize_t) size) {
+        mrb_sysrandom_safe_read(stream.random_data_source_fd, buf, size) != (ssize_t) size) {
         abort(); /* LCOV_EXCL_LINE */
     }
 #else
@@ -295,14 +296,63 @@ __randombytes_sysrandom_buf(void * const buf, const size_t size)
 #endif
 }
 
-uint32_t
-__randombytes_sysrandom(void)
+MRB_API uint32_t
+mrb_sysrandom(void)
 {
     uint32_t r;
 
-    __randombytes_sysrandom_buf(&r, sizeof r);
+    mrb_sysrandom_buf(&r, sizeof r);
 
     return r;
 }
 
 #endif /* __OpenBSD__ */
+
+/*
+ * mrb_sysrandom_uniform() derives from OpenBSD's arc4random_uniform()
+ * Copyright (c) 2008, Damien Miller <djm@openbsd.org>
+ */
+MRB_API uint32_t
+mrb_sysrandom_uniform(const uint32_t upper_bound)
+{
+    uint32_t min;
+    uint32_t r;
+
+    if (upper_bound < 2) {
+        return 0;
+    }
+    min = (uint32_t) (-upper_bound % upper_bound);
+    do {
+        r = mrb_sysrandom();
+    } while (r < min);
+
+    return r % upper_bound;
+}
+
+/* Derived from original code by CodesInChaos */
+MRB_API char *
+mrb_sysrandom_bin2hex(char * const hex, const size_t hex_maxlen,
+               const unsigned char * const bin, const size_t bin_len)
+{
+    size_t       i = (size_t) 0U;
+    unsigned int x;
+    int          b;
+    int          c;
+
+    if (bin_len >= SIZE_MAX / 2 || hex_maxlen <= bin_len * 2U) {
+        abort(); /* LCOV_EXCL_LINE */
+    }
+    while (i < bin_len) {
+        c = bin[i] & 0xf;
+        b = bin[i] >> 4;
+        x = (unsigned char) (87U + c + (((c - 10U) >> 8) & ~38U)) << 8 |
+            (unsigned char) (87U + b + (((b - 10U) >> 8) & ~38U));
+        hex[i * 2U] = (char) x;
+        x >>= 8;
+        hex[i * 2U + 1U] = (char) x;
+        i++;
+    }
+    hex[i * 2U] = 0U;
+
+    return hex;
+}
