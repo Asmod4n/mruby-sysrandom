@@ -1,11 +1,11 @@
 #ifndef MRUBY_SYSRANDOM_H
 #define MRUBY_SYSRANDOM_H
 
-#include <mruby.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#include <mruby.h>
 
 MRB_API uint32_t mrb_sysrandom(void);
 MRB_API void mrb_sysrandom_buf(void * const buf, const size_t size);

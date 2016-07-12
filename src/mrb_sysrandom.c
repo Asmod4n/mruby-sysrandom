@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <mruby/numeric.h>
 #include <mruby/sysrandom.h>
+#include <assert.h>
 
 #if (__GNUC__ >= 3) || (__INTEL_COMPILER >= 800) || defined(__clang__)
 # define likely(x) __builtin_expect(!!(x), 1)
@@ -50,7 +51,7 @@ mrb_randombytes_sysrandom_uniform(mrb_state *mrb, mrb_value self)
   if (upper_bound >= 0 && upper_bound <= UINT32_MAX) {
     uint32_t ran = mrb_sysrandom_uniform((uint32_t) upper_bound);
 #ifndef MRB_INT64
-    if (ran > MRB_INT_MAX) {
+    if (MRB_INT_MAX < ran) {
       return mrb_float_value(mrb, ran);
     }
     else
@@ -85,7 +86,7 @@ mrb_randombytes_sysrandom_buf(mrb_state *mrb, mrb_value self)
       break;
     case MRB_TT_DATA: {
       if (likely(!len_given)) {
-        mrb_value size_val = mrb_funcall(mrb, buf_obj, "size", 0);
+        mrb_value size_val = mrb_funcall(mrb, buf_obj, "bytesize", 0);
         len = mrb_int(mrb, size_val);
       }
 
@@ -111,7 +112,7 @@ mrb_randombytes_sysrandom_buf(mrb_state *mrb, mrb_value self)
       mrb_sysrandom_buf(RSTRING_PTR(buf_obj), DEFAULT_N_BYTES);
       break;
     default:
-      mrb_raise(mrb, E_TYPE_ERROR, "only works with Strings, Data or cptr Types");
+      mrb_raise(mrb, E_TYPE_ERROR, "only works with Integer, String, Data or cptr Types");
   }
 
   return buf_obj;
