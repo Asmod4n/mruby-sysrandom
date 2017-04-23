@@ -3,7 +3,7 @@ module Sysrandom
   DEFAULT_LENGTH = 16
 
   class << self
-    alias :random_bytes :buf
+    alias_method :random_bytes, :buf
 
     def base64(n = DEFAULT_LENGTH)
       B64.encode(buf(n)).chomp!
