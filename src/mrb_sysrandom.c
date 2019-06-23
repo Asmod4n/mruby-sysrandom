@@ -126,7 +126,7 @@ _mrb_sysrandom_bin2hex(mrb_state *mrb, mrb_value self)
 
   mrb_get_args(mrb, "s", &bin, &bin_len);
 
-  mrb_value hex_len = mrb_fixnum_mul(mrb, mrb_fixnum_value(bin_len), mrb_fixnum_value(2));
+  mrb_value hex_len = mrb_num_mul(mrb, mrb_fixnum_value(bin_len), mrb_fixnum_value(2));
   if (unlikely(mrb_float_p(hex_len))) {
     mrb_raise(mrb, E_ARGUMENT_ERROR, "bin_len is too large");
   }
