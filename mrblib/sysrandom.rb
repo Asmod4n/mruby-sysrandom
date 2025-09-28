@@ -6,7 +6,9 @@ module Sysrandom
     alias_method :random_bytes, :buf
 
     def base64(n = DEFAULT_LENGTH)
-      B64.encode(buf(n)).chomp!
+      s = B64.encode(buf(n))
+      s.chomp!
+      s
     end
 
     def hex(n = DEFAULT_LENGTH)
