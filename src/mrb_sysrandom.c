@@ -72,6 +72,7 @@ mrb_randombytes_sysrandom_buf(mrb_state *mrb, mrb_value self)
                    mrb_convert_size_t(mrb, SIZE_MAX));
       }
       buf_obj = mrb_str_new(mrb, NULL, len);
+      mrb_gc_protect(mrb, buf_obj);
       mrb_sysrandom_buf(RSTRING_PTR(buf_obj), len);
     } break;
     case MRB_TT_STRING:
@@ -126,13 +127,14 @@ _mrb_sysrandom_bin2hex(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "s", &bin, &bin_len);
 
   mrb_value hex_len = mrb_num_mul(mrb, mrb_int_value(mrb, bin_len), mrb_int_value(mrb, 2));
-  if (unlikely(mrb_float_p(hex_len))) {
+  if (unlikely(!mrb_integer_p(hex_len))) {
     mrb_raisef(mrb, E_ARGUMENT_ERROR,
                "binary string length %S is too large to convert to hex",
                mrb_int_value(mrb, bin_len));
   }
 
   mrb_value hex = mrb_str_new(mrb, NULL, mrb_integer(hex_len));
+  mrb_gc_protect(mrb, hex);
   char *h = mrb_sysrandom_bin2hex(RSTRING_PTR(hex), RSTRING_CAPA(hex) + 1,
                                   (const unsigned char *)bin, bin_len);
   assert(h);
